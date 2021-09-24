@@ -3,30 +3,32 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"log"
 	"time"
-	"fmt"
-//	"io"
-//	"reflect"
+
+	//      "io"
+	//      "reflect"
 	"encoding/json"
+
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
-	dds "labnet.com/proto/2/dds_service"
-	auth "labnet.com/proto/2/auth_service"
 	"gopkg.in/confluentinc/confluent-kafka-go.v1/kafka"
+	auth "labnet.com/proto/2/auth_service"
+	dds "labnet.com/proto/2/dds_service"
 )
 
 var (
-	serverAddr = flag.String("server_addr", "b1-re:32767", "The connection point")
-	tls = flag.Bool("tls", false, "Connection uses TLS if true")
-	caFile = flag.String("ca_file", "b1-re.pem", "The file containing the CA root cert file")
+	serverAddr         = flag.String("server_addr", "b1-re:32767", "The connection point")
+	tls                = flag.Bool("tls", false, "Connection uses TLS if true")
+	caFile             = flag.String("ca_file", "b1-re.pem", "The file containing the CA root cert file")
 	serverHostOverride = flag.String("server_host_override", "b1-re", "The server name as specified in the cert reqeust")
-	username = flag.String("user", "lab", "username")
-	passwd = flag.String("passwordd", "lab123", "password")
-	clientId = flag.String("client_id", "42", "Client ID for the session")
-	subscribeTopic = flag.String("sub_topic", "/Root/Type/net::juniper::rtnh::Nexthop", "Topic string for subscription")
-	kafkaBrokers = flag.String("kafka_brokers", "b1-re", "Kafka broker for output")
-	kafkaTopic = flag.String("kafka_topic", "test_topic", "Kafka topic for output")
+	username           = flag.String("user", "lab", "username")
+	passwd             = flag.String("passwordd", "lab123", "password")
+	clientId           = flag.String("client_id", "42", "Client ID for the session")
+	subscribeTopic     = flag.String("sub_topic", "/Root/Type/net::juniper::rtnh::Nexthop", "Topic string for subscription")
+	kafkaBrokers       = flag.String("kafka_brokers", "b1-re", "Kafka broker for output")
+	kafkaTopic         = flag.String("kafka_topic", "test_topic", "Kafka topic for output")
 )
 
 func publish_stream(topic_stream dds.DDS_TopicSubscribeClient) {
@@ -54,13 +56,13 @@ func publish_stream(topic_stream dds.DDS_TopicSubscribeClient) {
 	// Produce messages to topic (asynchronously)
 	topic := *kafkaTopic
 	//for _, word := range []string{"Welcome", "to", "the", "Confluent", "Kafka", "Golang", "client"} {
-	//	p.Produce(&kafka.Message{
-	//		TopicPartition: kafka.TopicPartition{Topic: &topic, Partition: kafka.PartitionAny},
-	//		Value:          []byte(word),
-	//	}, nil)
+	//      p.Produce(&kafka.Message{
+	//              TopicPartition: kafka.TopicPartition{Topic: &topic, Partition: kafka.PartitionAny},
+	//              Value:          []byte(word),
+	//      }, nil)
 	//}
 	for {
-		msg, err :=  topic_stream.Recv()
+		msg, err := topic_stream.Recv()
 		if err != nil {
 			log.Fatalf("Something bad happened %v", err)
 		}
@@ -70,7 +72,7 @@ func publish_stream(topic_stream dds.DDS_TopicSubscribeClient) {
 			//fmt.Printf("%+v\n", out_entry)
 			p.Produce(&kafka.Message{
 				TopicPartition: kafka.TopicPartition{Topic: &topic, Partition: kafka.PartitionAny},
-				Value: out_entry,
+				Value:          out_entry,
 			}, nil)
 		}
 	}
@@ -121,38 +123,44 @@ func main() {
 
 	//request := dds.TopicListRequest{RequestId: uint64(42)}
 	//req := &request
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
-	defer cancel()
-	
-	request := dds.TopicSubscribeRequest{ContinuousSync: true, SubscriptionTopics: []string{*subscribeTopic}}
-	req := &request
 
-	topicStream, err := client.TopicSubscribe(ctx, req)
+	for {
+		ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+		//defer cancel()
 
-	publish_stream(topicStream)	
+		request := dds.TopicSubscribeRequest{ContinuousSync: true, SubscriptionTopics: []string{*subscribeTopic}}
+		req := &request
+
+		topicStream, err := client.TopicSubscribe(ctx, req)
+		if err != nil {
+			log.Printf(err.Error())
+		}
+		publish_stream(topicStream)
+		cancel()
+	}
 
 	//topicList, err := client.TopicListGet(ctx,req)
 	//if err != nil {
-	//	log.Fatalf("%v.TopicSubscribe(_) = _, %v", client, err)
+	//      log.Fatalf("%v.TopicSubscribe(_) = _, %v", client, err)
 	//}
 
 	//tl := &topicList
 	//fmt.Printf("%+v\n", topicStream)
 	//b, err := json.Marshal(tl)
 	//if err != nil {
-	//	fmt.Println(err)
-	//	return
+	//      fmt.Println(err)
+	//      return
 	//}
 	//fmt.Println(string(b))
-//	vtl := reflect.ValueOf(topicList)
-//	typeOfTl := vtl.Type()
-//
-//	for i := 0; i< vtl.NumField(); i++ {
-//		fmt.Printf("Field: %s\tValue:%v\n", typeOfTl.Field(i).Name, vtl.Field(i).Interface())
-//	}
+	//      vtl := reflect.ValueOf(topicList)
+	//      typeOfTl := vtl.Type()
+	//
+	//      for i := 0; i< vtl.NumField(); i++ {
+	//              fmt.Printf("Field: %s\tValue:%v\n", typeOfTl.Field(i).Name, vtl.Field(i).Interface())
+	//      }
 	//topics := topicList.GetTopics()
 
 	//for _,t := range topics {
-	//	fmt.Printf(t.Topic,"\n")
+	//      fmt.Printf(t.Topic,"\n")
 	//}
 }
